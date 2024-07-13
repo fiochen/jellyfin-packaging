@@ -34,34 +34,7 @@ ARG JELLYFIN_VERSION
 #
 # Build the web artifacts
 #
-FROM node:${NODEJS_VERSION}-alpine as web
-
-ARG SOURCE_DIR=/src
-ARG ARTIFACT_DIR=/web
-
-ARG JELLYFIN_VERSION
-ENV JELLYFIN_VERSION=${JELLYFIN_VERSION}
-
-RUN apk add \
-    autoconf \
-    g++ \
-    make \
-    libpng-dev \
-    gifsicle \
-    alpine-sdk \
-    automake \
-    libtool \
-    gcc \
-    musl-dev \
-    nasm \
-    python3
-
-WORKDIR ${SOURCE_DIR}
-COPY jellyfin-web .
-
-RUN npm ci --no-audit --unsafe-perm \
- && npm run build:production \
- && mv dist ${ARTIFACT_DIR}
+FROM jellyfin/jellyfin:${JELLYFIN_VERSION} as web
 
 #
 # Build the server artifacts
@@ -132,7 +105,7 @@ ENV NVIDIA_VISIBLE_DEVICES="all"
 ENV NVIDIA_DRIVER_CAPABILITIES="compute,video,utility"
 
 # Install dependencies:
-RUN apt-get update \
+RUN sed -i 's/deb.debian.org/mirrors.cloud.tencent.com/g' /etc/apt/sources.list.d/debian.sources && apt-get update && apt-get upgrade \
  && apt-get install --no-install-recommends --no-install-suggests --yes \
     ca-certificates \
     gnupg \
@@ -140,7 +113,7 @@ RUN apt-get update \
     apt-transport-https \
  && curl -fsSL https://repo.jellyfin.org/jellyfin_team.gpg.key \
   | gpg --dearmor -o /etc/apt/trusted.gpg.d/debian-jellyfin.gpg \
- && echo "deb [arch=${PACKAGE_ARCH}] https://repo.jellyfin.org/master/debian ${OS_VERSION} main" > /etc/apt/sources.list.d/jellyfin.list \
+ && echo "deb [arch=${PACKAGE_ARCH}] https://n.kono-dio.top/master/debian ${OS_VERSION} main" > /etc/apt/sources.list.d/jellyfin.list \
  && apt-get update \
  && apt-get install --no-install-recommends --no-install-suggests --yes \
     ${FFMPEG_PACKAGE} \
@@ -148,6 +121,10 @@ RUN apt-get update \
     locales \
     libfontconfig1 \
     libfreetype6 \
+    fonts-noto-cjk-extra \
+    fontconfig \
+    vainfo \
+ && fc-cache -fv \
  && sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && locale-gen \
  && apt-get remove gnupg apt-transport-https --yes \
  && apt-get clean autoclean --yes \
@@ -161,11 +138,11 @@ RUN apt-get update \
 RUN if test "${PACKAGE_ARCH}" = "amd64"; then \
     mkdir intel-compute-runtime \
  && cd intel-compute-runtime \
- && curl -LO https://github.com/intel/intel-graphics-compiler/releases/download/igc-${IGC_VERSION}/intel-igc-core_${IGC_VERSION}_amd64.deb \
-         -LO https://github.com/intel/intel-graphics-compiler/releases/download/igc-${IGC_VERSION}/intel-igc-opencl_${IGC_VERSION}_amd64.deb \
-         -LO https://github.com/intel/compute-runtime/releases/download/${NEO_VERSION}/intel-opencl-icd_${NEO_VERSION}_amd64.deb \
-         -LO https://github.com/intel/compute-runtime/releases/download/${NEO_VERSION}/intel-level-zero-gpu_${LEVEL_ZERO_VERSION}_amd64.deb \
-         -LO https://github.com/intel/compute-runtime/releases/download/${NEO_VERSION}/libigdgmm12_${GMMLIB_VERSION}_amd64.deb \
+ && curl -LO https://n.kono-dio.top/intel/intel-graphics-compiler/releases/download/igc-${IGC_VERSION}/intel-igc-core_${IGC_VERSION}_amd64.deb \
+         -LO https://n.kono-dio.top/intel/intel-graphics-compiler/releases/download/igc-${IGC_VERSION}/intel-igc-opencl_${IGC_VERSION}_amd64.deb \
+         -LO https://n.kono-dio.top/intel/compute-runtime/releases/download/${NEO_VERSION}/intel-opencl-icd_${NEO_VERSION}_amd64.deb \
+         -LO https://n.kono-dio.top/intel/compute-runtime/releases/download/${NEO_VERSION}/intel-level-zero-gpu_${LEVEL_ZERO_VERSION}_amd64.deb \
+         -LO https://n.kono-dio.top/intel/compute-runtime/releases/download/${NEO_VERSION}/libigdgmm12_${GMMLIB_VERSION}_amd64.deb \
  && apt-get install --no-install-recommends --no-install-suggests -f -y ./*.deb \
  && cd .. \
  && rm -rf intel-compute-runtime \
@@ -191,7 +168,7 @@ RUN mkdir -p ${JELLYFIN_DATA_DIR} ${JELLYFIN_CACHE_DIR} \
  && chmod 777 ${JELLYFIN_DATA_DIR} ${JELLYFIN_CACHE_DIR}
 
 COPY --from=server /server /jellyfin
-COPY --from=web /web /jellyfin/jellyfin-web
+COPY --from=web /jellyfin/jellyfin-web /jellyfin/jellyfin-web
 
 ARG JELLYFIN_VERSION
 LABEL "org.opencontainers.image.source"="https://github.com/jellyfin/jellyfin"
