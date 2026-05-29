@@ -38,36 +38,7 @@ ARG JELLYFIN_VERSION
 #
 # Build the web artifacts
 #
-FROM node:${NODEJS_VERSION}-alpine AS web
-
-ARG SOURCE_DIR=/src
-ARG ARTIFACT_DIR=/web
-
-ARG JELLYFIN_VERSION
-ENV JELLYFIN_VERSION=${JELLYFIN_VERSION}
-
-RUN apk add \
-    autoconf \
-    g++ \
-    make \
-    libpng-dev \
-    gifsicle \
-    alpine-sdk \
-    automake \
-    libtool \
-    gcc \
-    musl-dev \
-    nasm \
-    python3 \
-    git \
- && git config --global --add safe.directory /jellyfin/jellyfin-web
-
-WORKDIR ${SOURCE_DIR}
-COPY jellyfin-web .
-
-RUN npm ci --no-audit --unsafe-perm \
- && npm run build:production \
- && mv dist ${ARTIFACT_DIR}
+FROM jellyfin/jellyfin:${JELLYFIN_VERSION} as web
 
 #
 # Build the server artifacts
@@ -170,6 +141,10 @@ RUN apt-get update \
     libfontconfig1 \
     libfreetype6 \
     libjemalloc2 \
+    fonts-noto-cjk-extra \
+    fontconfig \
+    vainfo \
+ && fc-cache -fv \
  && sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && locale-gen \
  && apt-get remove gnupg apt-transport-https --yes \
  && apt-get clean autoclean --yes \
@@ -248,7 +223,7 @@ RUN mkdir -p ${JELLYFIN_DATA_DIR} ${JELLYFIN_CACHE_DIR} \
  && chmod 777 ${JELLYFIN_DATA_DIR} ${JELLYFIN_CACHE_DIR}
 
 COPY --from=server /server /jellyfin
-COPY --from=web /web /jellyfin/jellyfin-web
+COPY --from=web /jellyfin/jellyfin-web /jellyfin/jellyfin-web
 ARG JELLYFIN_VERSION
 LABEL "org.opencontainers.image.source"="https://github.com/jellyfin/jellyfin-packaging"
 LABEL "org.opencontainers.image.title"="Jellyfin"

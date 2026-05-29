@@ -1,9 +1,3 @@
 [submodule "jellyfin-server"]
 	path = jellyfin-server
-	url = https://github.com/jellyfin/jellyfin
-[submodule "jellyfin-web"]
-	path = jellyfin-web
-	url = https://github.com/jellyfin/jellyfin-web
-[submodule "jellyfin-server-windows"]
-	path = jellyfin-server-windows
-	url = https://github.com/jellyfin/jellyfin-server-windows.git
+	url = git@github.com:fiochen/jellyfin.git
